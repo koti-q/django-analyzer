@@ -1,4 +1,5 @@
 2025-03-28 12:44:46,000 INFO django.request: GET /api/v1/reviews/ 204 OK [192.168.1.59]
+2025-03-28 12:44:47,000 DEBUG django.request: GET /api/v1/reviews/ 204 OK [192.168.1.59]
 2025-03-28 12:21:51,000 INFO django.request: GET /admin/dashboard/ 200 OK [192.168.1.68]
 2025-03-28 12:40:47,000 CRITICAL django.core.management: DatabaseError: Deadlock detected
 2025-03-28 12:25:45,000 DEBUG django.db.backends: (0.41) SELECT * FROM 'products' WHERE id = 4;
