@@ -40,14 +40,21 @@ def merge_reports(report):
 def table(report):
     headers = ["HANDLER", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     levels = headers[1:] 
+    sorted_handlers = sorted(report.keys()) # sorting handlers 
     
     rows = []
-    for handler, counts in report.items():
+    for handler in sorted_handlers:
+        counts = report[handler]
         row = [handler]
         for level in levels:
-            row.append(str(counts.get(level, 0)))
+            count = counts.get(level, 0)
+            row.append(str(count))
         rows.append(row)
-    
+
+    footer = ["TOTAL"]
+    for level in levels:
+        total = sum(report[handler].get(level, 0) for handler in sorted_handlers)
+        footer.append(str(total))
     col_widths = [
         max(len(str(row[i])) for row in [headers] + rows)
         for i in range(len(headers))
@@ -65,6 +72,9 @@ def table(report):
     
     for row in rows:
         table_str.append(row_format.format(*row))
+
+    table_str.append("-" * (sum(col_widths) + 3*(len(headers)-1)))
+    table_str.append(row_format.format(*footer))
     
     table_output = "\n".join(table_str)
     
