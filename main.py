@@ -1,19 +1,23 @@
-import os, argparse, asyncio, re
+import os
+import argparse
+import asyncio
+import re
 from collections import defaultdict
-from multiprocessing import Pool # i barely know how this module works, studied it just for this app
+from multiprocessing import Pool
+from typing import Dict, Tuple, Optional, List, DefaultDict, Any
 
 
-def process_line(line):  
+def process_line(line: str) -> Optional[Tuple[str, str]]:  
     if "django.request" not in line:
         return None
-    log_match = re.search(r'\b(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b', line) # looking for log level
-    handler_match = re.search(r'(\/[a-zA-Z0-9\/_\-\.]+)', line) # looking for handler
+    log_match = re.search(r'\b(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b', line)  # looking for log level
+    handler_match = re.search(r'(\/[a-zA-Z0-9\/_\-\.]+)', line)  # looking for handler
     if not (log_match and handler_match):
         return None
     return (handler_match.group(1), log_match.group(1))
 
-def process_file(path):
-    local_report = defaultdict(lambda: defaultdict(int))
+def process_file(path: str) -> Dict[str, Dict[str, int]]:
+    local_report: DefaultDict[str, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     with open(path, 'r') as f:
         for line in f:  # reading file by lines instead of loading all file to the memory
@@ -22,10 +26,10 @@ def process_file(path):
                 handler, log_level = result
                 local_report[handler][log_level] += 1
 
-    return dict(local_report)
+    return {k: dict(v) for k, v in local_report.items()}
 
-def merge_reports(report):
-    merged = defaultdict(lambda: defaultdict(int)) 
+def merge_reports(report: List[Dict[str, Dict[str, int]]]) -> Dict[str, Dict[str, int]]:
+    merged: DefaultDict[str, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int)) 
     
     for r in report:
         for handler, log_counts in r.items():
@@ -37,12 +41,12 @@ def merge_reports(report):
         for handler, log_level in merged.items()
     }
 
-def table(report):
-    headers = ["HANDLER", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    levels = headers[1:] 
-    sorted_handlers = sorted(report.keys()) # sorting handlers 
+def table(report: Dict[str, Dict[str, int]]) -> str:
+    headers: List[str] = ["HANDLER", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    levels: List[str] = headers[1:] 
+    sorted_handlers: List[str] = sorted(report.keys())  # sorting handlers 
     
-    rows = []
+    rows: List[List[str]] = []
     for handler in sorted_handlers:
         counts = report[handler]
         row = [handler]
@@ -51,22 +55,22 @@ def table(report):
             row.append(str(count))
         rows.append(row)
 
-    footer = ["TOTAL"]
+    footer: List[str] = ["TOTAL"]
     for level in levels:
         total = sum(report[handler].get(level, 0) for handler in sorted_handlers)
         footer.append(str(total))
-    col_widths = [
+    col_widths: List[int] = [
         max(len(str(row[i])) for row in [headers] + rows)
         for i in range(len(headers))
     ]
     col_widths[0] = max(col_widths[0], 20) 
 
-    row_format = " | ".join(
+    row_format: str = " | ".join(
         ["{:<" + str(col_widths[0]) + "}"] + 
         ["{:>" + str(w) + "}" for w in col_widths[1:]]
     )
     
-    table_str = []
+    table_str: List[str] = []
     table_str.append(row_format.format(*headers))
     table_str.append("-" * (sum(col_widths) + 3 * (len(headers) - 1)))
     
@@ -76,7 +80,7 @@ def table(report):
     table_str.append("-" * (sum(col_widths) + 3*(len(headers)-1)))
     table_str.append(row_format.format(*footer))
     
-    table_output = "\n".join(table_str)
+    table_output: str = "\n".join(table_str)
     
     print(table_output)
     return table_output
@@ -89,13 +93,13 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), 
                        help='Number of parallel jobs to use (default: number of CPU cores)')
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     with Pool(args.jobs) as pool:
-        reports = pool.map(process_file, args.log)
+        reports: List[Dict[str, Dict[str, int]]] = pool.map(process_file, args.log)
 
-    merged_report = merge_reports(reports)
-    table_output = table(merged_report)  
+    merged_report: Dict[str, Dict[str, int]] = merge_reports(reports)
+    table_output: str = table(merged_report)  
     
     if args.report:
         with open(args.report, 'w') as f:
